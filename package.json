@@ -2,11 +2,19 @@
   "name": "@synergenius/flowweaver-pack-github-actions",
   "version": "0.1.0",
   "description": "GitHub Actions CI/CD export target for Flow Weaver",
-  "keywords": ["flowweaver-marketplace-pack", "flow-weaver", "github-actions", "cicd"],
+  "keywords": [
+    "flowweaver-marketplace-pack",
+    "flow-weaver",
+    "github-actions",
+    "cicd"
+  ],
   "flowWeaver": {
     "type": "marketplace-pack",
     "engineVersion": ">=0.14.0",
-    "categories": ["deployment", "cicd"]
+    "categories": [
+      "deployment",
+      "cicd"
+    ]
   },
   "peerDependencies": {
     "@synergenius/flow-weaver": ">=0.14.0"
@@ -17,7 +25,11 @@
   "main": "./dist/target.js",
   "types": "./dist/target.d.ts",
   "type": "module",
-  "files": ["dist", "flowweaver.manifest.json", "README.md"],
+  "files": [
+    "dist",
+    "flowweaver.manifest.json",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build"
@@ -26,5 +38,9 @@
     "typescript": "^5.0.0",
     "@synergenius/flow-weaver": "^0.14.2"
   },
-  "license": "SEE LICENSE IN LICENSE"
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/synergenius-fw/flowweaver-pack-github-actions.git"
+  }
 }
