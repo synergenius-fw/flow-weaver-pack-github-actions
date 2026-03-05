@@ -35,9 +35,9 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
     "@synergenius/flow-weaver": "^0.17.4",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   },
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
