@@ -140,14 +140,21 @@ try {
   // Good
 }
 
-// 1. Bump version
+// 1. Bump version in package.json and manifest
 pkg.version = newVersion;
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+
+const manifestPath = path.join(rootDir, 'flowweaver.manifest.json');
+if (fs.existsSync(manifestPath)) {
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  manifest.version = newVersion;
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+}
 success(`Updated package.json to ${newVersion}`);
 
 // 2. Create release branch, commit, push
 run(`git checkout -b ${releaseBranch}`);
-run('git add package.json');
+run('git add package.json flowweaver.manifest.json');
 run(`git commit -m "Release ${tag}"`);
 run(`git push -u origin ${releaseBranch}`);
 success(`Pushed ${releaseBranch}`);
