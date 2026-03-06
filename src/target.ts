@@ -172,6 +172,34 @@ export class GitHubActionsTarget extends BaseExportTarget {
       );
     }
 
+    // Workflow-level @rule entries
+    const customRules = (ast.options?.cicd as Record<string, unknown>)?.workflowRules as
+      Array<{ if?: string; when?: string; changes?: string[] }> | undefined;
+    if (customRules && customRules.length > 0) {
+      const neverRules = customRules.filter(r => r.when === 'never' && r.if);
+      const otherRules = customRules.filter(r => r.when !== 'never');
+
+      if (neverRules.length > 0) {
+        // Translate negation rules to a workflow-level `if:` condition
+        const negations = neverRules.map(r => `!(${this.translateCondition(r.if!)})`);
+        const existing = doc.if ? `(${doc.if}) && ` : '';
+        doc.if = existing + negations.join(' && ');
+      }
+
+      for (const rule of otherRules) {
+        if (rule.changes) {
+          this._warnings.push(
+            `@rule changes=: GitHub Actions handles path filtering via on.push.paths/paths-ignore, not workflow-level rules. Move path filters to @trigger annotations.`
+          );
+        }
+        if (rule.when && rule.when !== 'always') {
+          this._warnings.push(
+            `@rule when=${rule.when}: GitHub Actions has no workflow-level "when" equivalent beyond "if:" conditions.`
+          );
+        }
+      }
+    }
+
     if (ast.options?.cicd?.concurrency) {
       doc.concurrency = {
         group: ast.options.cicd.concurrency.group,
