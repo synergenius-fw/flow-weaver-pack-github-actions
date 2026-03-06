@@ -283,6 +283,22 @@ export class GitHubActionsTarget extends BaseExportTarget {
       jobObj.needs = job.needs;
     }
 
+    // Optional needs: job should run even if optional deps fail
+    if (job.optionalNeeds && job.optionalNeeds.length > 0) {
+      jobObj.if = jobObj.if
+        ? `(${jobObj.if}) || always()`
+        : '${{ !cancelled() }}';
+    }
+
+    // parallel: N (render as matrix strategy)
+    if (job.parallel && !job.matrix) {
+      const chunks = Array.from({ length: job.parallel }, (_, i) => i + 1);
+      jobObj.strategy = { matrix: { chunk: chunks } };
+      this._warnings.push(
+        `@job ${job.id} parallel=${job.parallel}: Rendered as strategy.matrix.chunk. The compiled workflow receives the chunk index via matrix.chunk.`
+      );
+    }
+
     if (job.allowFailure) {
       jobObj['continue-on-error'] = true;
     }
@@ -377,16 +393,31 @@ export class GitHubActionsTarget extends BaseExportTarget {
     const steps: unknown[] = [];
 
     // Download artifacts from upstream jobs
-    if (job.downloadArtifacts && job.downloadArtifacts.length > 0) {
+    if (!job.skipDependencies && job.downloadArtifacts && job.downloadArtifacts.length > 0) {
       for (const artifactName of job.downloadArtifacts) {
+        // Skip download if needsArtifactControl explicitly disables it
+        const depJob = artifactName.split('-')[0];
+        if (job.needsArtifactControl?.[depJob] === false) continue;
+
         const artifact = ast.options?.cicd?.artifacts?.find((a) => a.name === artifactName);
+        const portPath = job.downloadArtifactPaths?.[artifactName];
         steps.push({
           uses: 'actions/download-artifact@v4',
           with: {
             name: artifactName,
-            ...(artifact?.path && { path: artifact.path }),
+            ...(portPath ? { path: portPath } : artifact?.path ? { path: artifact.path } : {}),
           },
         });
+      }
+
+      // Load dotenv artifacts into GITHUB_ENV
+      if (job.dotenvArtifacts && job.dotenvArtifacts.length > 0) {
+        for (const dotenv of job.dotenvArtifacts) {
+          steps.push({
+            name: `Load env from ${dotenv.name}`,
+            run: `cat ${dotenv.path} >> $GITHUB_ENV`,
+          });
+        }
       }
     }
 
@@ -515,34 +546,62 @@ export class GitHubActionsTarget extends BaseExportTarget {
   }
 
   private translateCondition(condition: string): string {
-    return condition
+    let result = condition
       .replace(/\$CI_COMMIT_BRANCH/g, "github.ref_name")
       .replace(/\$CI_COMMIT_TAG/g, "startsWith(github.ref, 'refs/tags/')")
       .replace(/\$CI_PIPELINE_SOURCE/g, "github.event_name")
-      .replace(/==/g, '==');
+      .replace(/\$CI_COMMIT_MESSAGE/g, "github.event.head_commit.message");
+
+    // Translate GitLab regex operator: $VAR =~ /pattern/ -> contains(VAR, 'pattern')
+    result = result.replace(
+      /(\S+)\s*=~\s*\/([^/]+)\//g,
+      (_match, variable, pattern) => `contains(${variable}, '${pattern}')`
+    );
+
+    // Translate negated regex: $VAR !~ /pattern/ -> !contains(VAR, 'pattern')
+    result = result.replace(
+      /(\S+)\s*!~\s*\/([^/]+)\//g,
+      (_match, variable, pattern) => `!contains(${variable}, '${pattern}')`
+    );
+
+    return result;
   }
 
-  private renderCacheStep(cache: { strategy: string; key?: string; path?: string }): Record<string, unknown> {
+  private renderCacheStep(cache: { strategy: string; key?: string; path?: string; policy?: string; files?: string[] }): Record<string, unknown> {
     const cacheConfig: Record<string, string> = {};
+
+    if (cache.policy) {
+      this._warnings.push(
+        `@cache policy="${cache.policy}": GitHub Actions cache does not support cache policy. The policy attribute is ignored.`
+      );
+    }
+
+    // Build hash expression from files array or key
+    const buildHashExpr = (files?: string[], key?: string, fallbackPattern?: string): string => {
+      if (files && files.length > 0) {
+        const filePatterns = files.map(f => `'${f}'`).join(', ');
+        return `\${{ hashFiles(${filePatterns}) }}`;
+      }
+      if (key) return `\${{ hashFiles('${key}') }}`;
+      return `\${{ hashFiles('${fallbackPattern}') }}`;
+    };
 
     switch (cache.strategy) {
       case 'npm':
         cacheConfig.path = cache.path || '~/.npm';
-        cacheConfig.key = cache.key
-          ? `npm-\${{ hashFiles('${cache.key}') }}`
-          : "npm-${{ hashFiles('**/package-lock.json') }}";
+        cacheConfig.key = `npm-${buildHashExpr(cache.files, cache.key, '**/package-lock.json')}`;
         break;
       case 'pip':
         cacheConfig.path = cache.path || '~/.cache/pip';
-        cacheConfig.key = cache.key
-          ? `pip-\${{ hashFiles('${cache.key}') }}`
-          : "pip-${{ hashFiles('**/requirements.txt') }}";
+        cacheConfig.key = `pip-${buildHashExpr(cache.files, cache.key, '**/requirements.txt')}`;
         break;
       default:
         cacheConfig.path = cache.path || '.cache';
-        cacheConfig.key = cache.key
-          ? `${cache.strategy}-\${{ hashFiles('${cache.key}') }}`
-          : `${cache.strategy}-\${{ github.sha }}`;
+        cacheConfig.key = cache.files
+          ? `${cache.strategy}-${buildHashExpr(cache.files)}`
+          : cache.key
+            ? `${cache.strategy}-\${{ hashFiles('${cache.key}') }}`
+            : `${cache.strategy}-\${{ github.sha }}`;
     }
 
     return {
@@ -564,8 +623,11 @@ export class GitHubActionsTarget extends BaseExportTarget {
     }
 
     if (cicd.services && cicd.services.length > 0) {
-      for (const job of jobs) {
-        job.services = cicd.services;
+      const globalServices = cicd.services.filter(s => !(s as typeof s & { job?: string }).job);
+      if (globalServices.length > 0) {
+        for (const job of jobs) {
+          job.services = globalServices;
+        }
       }
     }
 
