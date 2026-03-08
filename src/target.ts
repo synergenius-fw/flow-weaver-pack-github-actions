@@ -18,7 +18,7 @@ import {
   generateCICDRuntime,
   NATIVE_CI_STEPS,
   type CICDJob,
-} from '@synergenius/flowweaver-pack-cicd';
+} from '@synergenius/flow-weaver-pack-cicd';
 import type {
   ExportOptions,
   ExportArtifacts,
