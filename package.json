@@ -1,5 +1,5 @@
 {
-  "name": "@synergenius/flowweaver-pack-github-actions",
+  "name": "@synergenius/flow-weaver-pack-github-actions",
   "version": "0.2.5",
   "description": "GitHub Actions CI/CD export target for Flow Weaver",
   "keywords": [
@@ -18,7 +18,7 @@
   },
   "peerDependencies": {
     "@synergenius/flow-weaver": ">=0.17.0",
-    "@synergenius/flowweaver-pack-cicd": ">=0.2.0"
+    "@synergenius/flow-weaver-pack-cicd": ">=0.2.0"
   },
   "dependencies": {
     "yaml": "^2.8.0"
@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@synergenius/flow-weaver": "^0.17.0",
-    "@synergenius/flowweaver-pack-cicd": "file:../flowweaver-pack-cicd",
+    "@synergenius/flow-weaver-pack-cicd": "file:../flow-weaver-pack-cicd",
     "@types/node": "^20.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0",
@@ -48,6 +48,6 @@
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
-    "url": "https://github.com/synergenius-fw/flowweaver-pack-github-actions.git"
+    "url": "https://github.com/synergenius-fw/flow-weaver-pack-github-actions.git"
   }
 }

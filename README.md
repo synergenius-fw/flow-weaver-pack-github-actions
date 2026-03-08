@@ -1,4 +1,4 @@
-# @synergenius/flowweaver-pack-github-actions
+# @synergenius/flow-weaver-pack-github-actions
 
 GitHub Actions CI/CD export target for [Flow Weaver](https://github.com/synergenius-fw/flow-weaver).
 
@@ -7,7 +7,7 @@ Generates native `.github/workflows/<name>.yml` files from Flow Weaver CI/CD wor
 ## Installation
 
 ```bash
-npm install @synergenius/flowweaver-pack-github-actions
+npm install @synergenius/flow-weaver-pack-github-actions
 ```
 
 This package is a **marketplace pack** — once installed, Flow Weaver automatically discovers it via `createTargetRegistry()`.
